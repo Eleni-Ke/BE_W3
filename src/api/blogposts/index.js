@@ -73,7 +73,7 @@ blogpostsRouter.put("/:postsId", async (req, res, next) => {
 blogpostsRouter.delete("/:postsId", async (req, res, next) => {
   try {
     const deletedPost = await BlogpostModel.findByIdAndDelete(
-      req.params.blogpostsId
+      req.params.postsId
     );
     if (deletedPost) {
       res.status(204).send();
