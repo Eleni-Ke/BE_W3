@@ -14,9 +14,10 @@ import commentsRouter from "./api/comments/index.js";
 import createHttpError from "http-errors";
 import pdfRouter from "./api/files/pdf.js";
 import csvRouter from "./api/files/csv.js";
+import mongoose from "mongoose";
 
 const server = Express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3001;
 
 const whitelist = [process.env.FE_DEV_URL, process.env.FE_PROD_URL];
 
@@ -56,7 +57,17 @@ server.use(badReqHandler);
 server.use(notFoundHandler);
 server.use(generalErrorHandler);
 
-server.listen(port, () => {
-  console.table(listEndpoints(server));
-  console.log("Server works on port: ", port);
+// server.listen(port, () => {
+//   console.table(listEndpoints(server));
+//   console.log("Server works on port: ", port);
+// });
+
+mongoose.connect(process.env.MONGO_URL);
+
+mongoose.connection.on("connected", () => {
+  console.log("✅ Successfully connected to Mongo!");
+  server.listen(port, () => {
+    console.table(listEndpoints(server));
+    console.log(`✅ Server is running on port ${port}`);
+  });
 });

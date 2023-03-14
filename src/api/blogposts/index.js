@@ -1,64 +1,30 @@
 import Express from "express";
-import uniqid from "uniqid";
-import { checkBlogpostsSchema, triggerBadRequest } from "./blogpostSchema.js";
-import {
-  getAuthors,
-  getBlogposts,
-  writeBlogposts,
-} from "../../lib/fs-tools.js";
+import BlogpostModel from "./model.js";
 import { sendsPostEmail } from "../../lib/email-tools.js";
+import createHttpError from "http-errors";
 
 const blogpostsRouter = Express.Router();
 
-blogpostsRouter.post(
-  "/",
-  checkBlogpostsSchema,
-  triggerBadRequest,
-  async (req, res, next) => {
-    try {
-      const newBlogpost = {
-        ...req.body,
-        id: uniqid(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+blogpostsRouter.post("/", async (req, res, next) => {
+  try {
+    const newBlogpost = new BlogpostModel(req.body);
 
-      const allBlogposts = await getBlogposts();
-      allBlogposts.push(newBlogpost);
-      await writeBlogposts(allBlogposts);
-      const email = req.body.author.email;
-      console.log(email);
-      // const authorName = req.body.author.name;
-      // const allAuthors = await getAuthors();
-      // const matchedAuthor = allAuthors.find((e) => e.name === authorName);
-      // if (matchedAuthor) {
-      //   console.log(matchedAuthor);
-      //   const email = matchedAuthor.email;
-      //   console.log(email);
-      //   await sendsPostEmail(email);
-      // } else {
-      //   console.log("Author does not exist.");
-      // }
-      await sendsPostEmail(email);
+    const { _id } = await newBlogpost.save();
 
-      res.status(201).send({ id: newBlogpost.id });
-    } catch (error) {
-      next(error);
-    }
+    const email = req.body.author.email;
+    console.log(email);
+    await sendsPostEmail(email);
+
+    res.status(201).send({ _id });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 blogpostsRouter.get("/", async (req, res, next) => {
   try {
-    const allBlogposts = await getBlogposts();
-    if (req.query && req.query.title) {
-      const matchedBlogposts = allBlogposts.filter((post) =>
-        post.title.toLowerCase().includes(req.query.title.toLocaleLowerCase())
-      );
-      res.send(matchedBlogposts);
-    } else {
-      res.send(allBlogposts);
-    }
+    const blogposts = await BlogpostModel.find();
+    res.send(blogposts);
   } catch (error) {
     next(error);
   }
@@ -66,46 +32,56 @@ blogpostsRouter.get("/", async (req, res, next) => {
 
 blogpostsRouter.get("/:postsId", async (req, res, next) => {
   try {
-    const postId = req.params.postsId;
-    const allBlogposts = await getBlogposts();
-    const post = allBlogposts.find((e) => e.id === postId);
-    res.send(post);
+    const blogpost = await BlogpostModel.findById(req.params.postsId);
+    if (blogpost) {
+      res.send(blogpost);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost with id ${req.params.blogpostsId} not found!`
+        )
+      );
+    }
   } catch (error) {
     next(error);
   }
 });
 
-blogpostsRouter.put(
-  "/:postsId",
-  checkBlogpostsSchema,
-  triggerBadRequest,
-  async (req, res, next) => {
-    try {
-      const postId = req.params.postsId;
-      const allBlogposts = await getBlogposts();
-      const index = allBlogposts.findIndex((e) => e.id === postId);
-      const oldPost = allBlogposts[index];
-      const updatedPost = {
-        ...oldPost,
-        ...req.body,
-        updatedAt: new Date(),
-      };
-      allBlogposts[index] = updatedPost;
-      await writeBlogposts(allBlogposts);
+blogpostsRouter.put("/:postsId", async (req, res, next) => {
+  try {
+    const updatedPost = await BlogpostModel.findByIdAndUpdate(
+      req.params.postsId,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (updatedPost) {
       res.send(updatedPost);
-    } catch (error) {
-      next(error);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost with the id ${req.params.postsId} not found!`
+        )
+      );
     }
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 blogpostsRouter.delete("/:postsId", async (req, res, next) => {
   try {
-    const postId = req.params.postsId;
-    const allBlogposts = await getBlogposts;
-    const remainingPosts = allBlogposts.filter((e) => e.id !== postId);
-    await writeBlogposts(remainingPosts);
-    res.status(204).send();
+    const deletedPost = await BlogpostModel.findByIdAndDelete(
+      req.params.blogpostsId
+    );
+    if (deletedPost) {
+      res.status(204).send();
+    } else {
+      next(
+        createHttpError(404, `User with id ${req.params.userId} not found!`)
+      );
+    }
   } catch (error) {
     next(error);
   }
