@@ -2,6 +2,7 @@ import Express from "express";
 import BlogpostModel from "./model.js";
 import { sendsPostEmail } from "../../lib/email-tools.js";
 import createHttpError from "http-errors";
+import q2m from "query-to-mongo";
 
 const blogpostsRouter = Express.Router();
 
@@ -23,8 +24,21 @@ blogpostsRouter.post("/", async (req, res, next) => {
 
 blogpostsRouter.get("/", async (req, res, next) => {
   try {
-    const blogposts = await BlogpostModel.find();
-    res.send(blogposts);
+    const mongoQuery = q2m(req.query);
+    const blogposts = await BlogpostModel.find(
+      mongoQuery.criteria,
+      mongoQuery.options.fields
+    )
+      .limit(mongoQuery.options.limit)
+      .skip(mongoQuery.options.skip)
+      .sort(mongoQuery.options.sort);
+    const total = await BlogpostModel.countDocuments(mongoQuery.criteria);
+    res.send({
+      links: mongoQuery.links("http://localhost:3001/blogposts", total),
+      total,
+      numberOfPages: Math.ceil(total / mongoQuery.options.limit),
+      blogposts,
+    });
   } catch (error) {
     next(error);
   }
@@ -86,5 +100,142 @@ blogpostsRouter.delete("/:postsId", async (req, res, next) => {
     next(error);
   }
 });
+
+// *********************** EMBEDDED CRUD ***************************
+
+blogpostsRouter.post("/:postsId/comments", async (req, res, next) => {
+  try {
+    const commentToAdd = {
+      ...req.body,
+      commentCreatedAt: new Date(),
+      commentUpdatedAt: new Date(),
+    };
+    const updatedPost = await BlogpostModel.findByIdAndUpdate(
+      req.params.postsId,
+      { $push: { comments: commentToAdd } },
+      { new: true, runValidator: true }
+    );
+    if (updatedPost) {
+      res.send(updatedPost);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost witht the id: ${req.params.postsId} not found.`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogpostsRouter.get("/:postsId/comments", async (req, res, next) => {
+  try {
+    const post = await BlogpostModel.findById(req.params.postsId);
+    if (post) {
+      res.send(post.comments);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost witht the id: ${req.params.postsId} not found.`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogpostsRouter.get("/:postsId/comments/:commentId", async (req, res, next) => {
+  try {
+    const post = await BlogpostModel.findById(req.params.postsId);
+    if (post) {
+      const comment = post.comments.find(
+        (e) => e._id.toString() === req.params.commentId
+      );
+      if (comment) {
+        res.send(comment);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Comment witht the id: ${req.params.commentId} not found.`
+          )
+        );
+      }
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost witht the id: ${req.params.postsId} not found.`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogpostsRouter.put("/:postsId/comments/:commentId", async (req, res, next) => {
+  try {
+    const post = await BlogpostModel.findById(req.params.postsId);
+    if (post) {
+      const index = post.comments.findIndex(
+        (e) => e._id.toString() === req.params.commentId
+      );
+      if (index !== -1) {
+        post.comments[index] = {
+          ...post.comments[index].toObject(),
+          ...req.body,
+        };
+        await post.save();
+        res.send(post);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Comment witht the id: ${req.params.commentId} not found.`
+          )
+        );
+      }
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Blogpost witht the id: ${req.params.postsId} not found.`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+blogpostsRouter.delete(
+  "/:postsId/comments/:commentId",
+  async (req, res, next) => {
+    try {
+      const updatedPost = await BlogpostModel.findByIdAndUpdate(
+        req.params.postsId,
+        { $pull: { comments: { _id: req.params.commentId } } },
+        { new: true, runValidators: true }
+      );
+      if (updatedPost) {
+        res.send(updatedPost);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Blogpost witht the id: ${req.params.postsId} not found.`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default blogpostsRouter;

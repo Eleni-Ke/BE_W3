@@ -48,7 +48,7 @@ server.use("/authors", authorsRouter);
 server.use("/blogposts", blogpostsRouter);
 server.use("/authors", avatarRouter);
 server.use("/blogposts", coverRouter);
-server.use("/blogposts", commentsRouter);
+//server.use("/blogposts", commentsRouter);
 server.use("/blogposts", pdfRouter);
 
 // ************************* ERROR HANDLERS *******************
