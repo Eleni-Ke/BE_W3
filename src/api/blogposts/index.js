@@ -189,6 +189,7 @@ blogpostsRouter.put("/:postsId/comments/:commentId", async (req, res, next) => {
         post.comments[index] = {
           ...post.comments[index].toObject(),
           ...req.body,
+          commentUpdatedAt: new Date(),
         };
         await post.save();
         res.send(post);
