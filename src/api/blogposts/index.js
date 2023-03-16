@@ -241,11 +241,18 @@ blogpostsRouter.delete(
 
 // *********************** LIKES *********************
 
-blogpostsRouter.put("/:postsId/like", async (req, res, next) => {
+blogpostsRouter.post("/:postsId/like", async (req, res, next) => {
   try {
-    const idToInsert = req.body;
+    const idToInsert = req.body.id;
     const post = await BlogpostModel.findById(req.params.postsId);
-    const index = post.likes.findIndex((e) => e.toString === req.body);
+    if (!post)
+      return next(
+        createHttpError(
+          404,
+          `Blogpost witht the id: ${req.params.postsId} not found.`
+        )
+      );
+    const index = post.likes.findIndex((e) => e === req.body.id);
     if (index === -1) {
       const updatedPost = await BlogpostModel.findByIdAndUpdate(
         req.params.postsId,
@@ -259,10 +266,22 @@ blogpostsRouter.put("/:postsId/like", async (req, res, next) => {
             `Blogpost witht the id: ${req.params.postsId} not found.`
           )
         );
+      res.send(updatedPost);
     } else {
+      const updatedPost = await BlogpostModel.findByIdAndUpdate(
+        req.params.postsId,
+        { $pull: { likes: idToInsert } },
+        { new: true, runValidators: true }
+      );
+      if (!updatedPost)
+        return next(
+          createHttpError(
+            404,
+            `Blogpost witht the id: ${req.params.postsId} not found.`
+          )
+        );
+      res.send(updatedPost);
     }
-
-    res.send(updatedPost);
   } catch (error) {
     next(error);
   }
