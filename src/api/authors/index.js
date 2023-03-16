@@ -1,41 +1,26 @@
 import Express from "express";
-import uniqid from "uniqid";
-import { getAuthors, writeAuthors } from "../../lib/fs-tools.js";
-import {
-  checkAuthorSchema,
-  triggerBadRequest,
-} from "../blogposts/blogpostSchema.js";
+import createHttpError from "http-errors";
+import AuthorsModel from "./model.js";
+// import uniqid from "uniqid";
+// import { getAuthors, writeAuthors } from "../../lib/fs-tools.js";
 
 const authorsRouter = Express.Router();
 
-authorsRouter.post(
-  "/",
-  checkAuthorSchema,
-  triggerBadRequest,
-  async (req, res, next) => {
-    try {
-      const allAuthors = await getAuthors();
-      const newAuthor = {
-        ...req.body,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        id: uniqid(),
-      };
-
-      allAuthors.push(newAuthor);
-      await writeAuthors(allAuthors);
-
-      res.status(201).send({ id: newAuthor.id });
-    } catch (error) {
-      next(error);
-    }
+authorsRouter.post("/", async (req, res, next) => {
+  try {
+    const newAuthor = new AuthorsModel(req.body);
+    console.log(newAuthor);
+    const { _id } = await newAuthor.save();
+    res.status(201).send({ _id });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 authorsRouter.get("/", async (req, res, next) => {
   try {
-    const allAuthors = await getAuthors();
-    res.send(allAuthors);
+    const authors = await AuthorsModel.find();
+    res.send(authors);
   } catch (error) {
     next(error);
   }
@@ -43,44 +28,53 @@ authorsRouter.get("/", async (req, res, next) => {
 
 authorsRouter.get("/:authorsId", async (req, res, next) => {
   try {
-    const authorId = req.params.authorsId;
-    const allAuthors = await getAuthors();
-    const author = allAuthors.find((author) => author.id === authorId);
-    res.send(author);
+    const author = await AuthorsModel.findById(req.params.authorsId);
+    if (author) {
+      res.send(author);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with the id: ${req.params.authorsId} not found!`
+        )
+      );
+    }
   } catch (error) {
     next(error);
   }
 });
 
-authorsRouter.put(
-  "/:authorsId",
-  checkAuthorSchema,
-  triggerBadRequest,
-  async (req, res, next) => {
-    try {
-      const authorId = req.params.authorsId;
-      const allAuthors = await getAuthors();
-      const index = allAuthors.findIndex((author) => author.id === authorId);
-      const oldAuthor = allAuthors[index];
-      const updatedUser = { ...oldAuthor, ...req.body, updatedAt: new Date() };
-      allAuthors[index] = updatedUser;
-      await writeAuthors(allAuthors);
-      res.send(updatedUser);
-    } catch (error) {
-      next(error);
+authorsRouter.put("/:authorsId", async (req, res, next) => {
+  try {
+    const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+      req.params.authorsId,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (updatedAuthor) {
+      res.send(updatedAuthor);
+    } else {
+      next(
+        createError(404, `Author with id ${req.params.authorsId} not found!`)
+      );
     }
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 authorsRouter.delete("/:authorsId", async (req, res, next) => {
   try {
-    const authorId = req.params.authorsId;
-    const allAuthors = await getAuthors();
-    const remainingAuthors = allAuthors.filter(
-      (author) => author.id !== authorId
+    const deletedAuthor = await AuthorsModel.findByIdAndDelete(
+      req.params.authorsId
     );
-    await writeAuthors(remainingAuthors);
-    res.status(204).send();
+    if (deletedAuthor) {
+      res.status(204).send();
+    } else {
+      next(
+        createError(404, `Author with id ${req.params.authorsId} not found!`)
+      );
+    }
   } catch (error) {
     next(error);
   }

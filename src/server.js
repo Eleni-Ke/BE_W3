@@ -10,7 +10,6 @@ import {
 } from "./errorsHandlers.js";
 import avatarRouter from "./api/files/avatar.js";
 import coverRouter from "./api/files/cover.js";
-import commentsRouter from "./api/comments/index.js";
 import createHttpError from "http-errors";
 import pdfRouter from "./api/files/pdf.js";
 import csvRouter from "./api/files/csv.js";
@@ -48,7 +47,6 @@ server.use("/authors", authorsRouter);
 server.use("/blogposts", blogpostsRouter);
 server.use("/authors", avatarRouter);
 server.use("/blogposts", coverRouter);
-//server.use("/blogposts", commentsRouter);
 server.use("/blogposts", pdfRouter);
 
 // ************************* ERROR HANDLERS *******************

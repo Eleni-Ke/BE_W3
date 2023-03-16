@@ -12,9 +12,9 @@ blogpostsRouter.post("/", async (req, res, next) => {
 
     const { _id } = await newBlogpost.save();
 
-    const email = req.body.author.email;
-    console.log(email);
-    await sendsPostEmail(email);
+    //const email = req.body.author.email;
+    //console.log(email);
+    //await sendsPostEmail(email);
 
     res.status(201).send({ _id });
   } catch (error) {
@@ -238,5 +238,34 @@ blogpostsRouter.delete(
     }
   }
 );
+
+// *********************** LIKES *********************
+
+blogpostsRouter.put("/:postsId/like", async (req, res, next) => {
+  try {
+    const idToInsert = req.body;
+    const post = await BlogpostModel.findById(req.params.postsId);
+    const index = post.likes.findIndex((e) => e.toString === req.body);
+    if (index === -1) {
+      const updatedPost = await BlogpostModel.findByIdAndUpdate(
+        req.params.postsId,
+        { $push: { likes: idToInsert } },
+        { new: true, runValidators: true }
+      );
+      if (!updatedPost)
+        return next(
+          createHttpError(
+            404,
+            `Blogpost witht the id: ${req.params.postsId} not found.`
+          )
+        );
+    } else {
+    }
+
+    res.send(updatedPost);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default blogpostsRouter;
