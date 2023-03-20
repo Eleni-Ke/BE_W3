@@ -93,7 +93,7 @@ blogpostsRouter.delete("/:postsId", async (req, res, next) => {
       res.status(204).send();
     } else {
       next(
-        createHttpError(404, `User with id ${req.params.userId} not found!`)
+        createHttpError(404, `Post with id ${req.params.postsId} not found!`)
       );
     }
   } catch (error) {
