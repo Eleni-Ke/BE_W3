@@ -28,9 +28,9 @@ coverRouter.post(
         // const fileName = blogpostId + originalFileExt;
         // await saveCover(fileName, req.file.buffer);
 
-        const olfPost = allBlogposts[index];
+        const oldPost = allBlogposts[index];
         const updatedAuthor = {
-          ...olfPost,
+          ...oldPost,
           ...req.body,
           cover: req.file.path,
           updatedAt: new Date(),

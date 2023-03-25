@@ -7,7 +7,7 @@ const csvRouter = Express.Router();
 
 csvRouter.get("/authors/csv", (req, res, next) => {
   try {
-    res.setHeader("Content-Disposition", "attachment; filename=athors.csv");
+    res.setHeader("Content-Disposition", "attachment; filename=authors.csv");
     const source = getAuthorsJSONReadableStream();
 
     const transform = new Transform({
