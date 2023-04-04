@@ -5,8 +5,10 @@ import blogpostsRouter from "./api/blogposts/index.js";
 import authorsRouter from "./api/authors/index.js";
 import {
   badReqHandler,
+  forbiddenErrorHandler,
   generalErrorHandler,
   notFoundHandler,
+  unauthorizedErrorHandler,
 } from "./errorsHandlers.js";
 import avatarRouter from "./api/files/avatar.js";
 import coverRouter from "./api/files/cover.js";
@@ -51,14 +53,11 @@ server.use("/blogposts", pdfRouter);
 
 // ************************* ERROR HANDLERS *******************
 
+server.use(unauthorizedErrorHandler);
+server.use(forbiddenErrorHandler);
 server.use(badReqHandler);
 server.use(notFoundHandler);
 server.use(generalErrorHandler);
-
-// server.listen(port, () => {
-//   console.table(listEndpoints(server));
-//   console.log("Server works on port: ", port);
-// });
 
 mongoose.connect(process.env.MONGO_URL);
 
