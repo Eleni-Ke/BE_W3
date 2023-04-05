@@ -3,12 +3,29 @@ import BlogpostModel from "./model.js";
 import { sendsPostEmail } from "../../lib/email-tools.js";
 import createHttpError from "http-errors";
 import q2m from "query-to-mongo";
+import { basicAuthMiddleware } from "../../lib/auth/basic.js";
 
 const blogpostsRouter = Express.Router();
 
-blogpostsRouter.post("/", async (req, res, next) => {
+blogpostsRouter.get(
+  "/me/stories",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blogs = await BlogpostModel.find({
+        authors: { $in: [req.author._id] },
+      }).populate("authors");
+      res.send(blogs);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+blogpostsRouter.post("/", basicAuthMiddleware, async (req, res, next) => {
   try {
     const newBlogpost = new BlogpostModel(req.body);
+    newBlog.authors = [...newBlog.authors, request.author._id];
 
     const { _id } = await newBlogpost.save();
 
@@ -62,39 +79,59 @@ blogpostsRouter.get("/:postsId", async (req, res, next) => {
   }
 });
 
-blogpostsRouter.put("/:postsId", async (req, res, next) => {
-  try {
-    const updatedPost = await BlogpostModel.findByIdAndUpdate(
-      req.params.postsId,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (updatedPost) {
-      res.send(updatedPost);
-    } else {
-      next(
-        createHttpError(
-          404,
-          `Blogpost with the id ${req.params.postsId} not found!`
-        )
-      );
+blogpostsRouter.put(
+  "/:postsId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const blog = await BlogpostModel.findById(req.params.postsId);
+      if (
+        blog.authors.includes(req.author._id) ||
+        req.author.role === "Admin"
+      ) {
+        const updatedBlog = await BlogpostModel.findByIdAndUpdate(
+          req.params.postsId,
+          req.body,
+          { new: true, runValidators: true }
+        );
+        if (updatedBlog) {
+          res.send(updatedBlog);
+        } else {
+          next(
+            createHttpError(404, {
+              message: `Blog with _id ${request.params.postsId} was not found!`,
+            })
+          );
+        }
+      } else {
+        next(
+          createHttpError(403, "You are not authorized to update this blog!")
+        );
+      }
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 blogpostsRouter.delete("/:postsId", async (req, res, next) => {
   try {
-    const deletedPost = await BlogpostModel.findByIdAndDelete(
-      req.params.postsId
-    );
-    if (deletedPost) {
-      res.status(204).send();
-    } else {
-      next(
-        createHttpError(404, `Post with id ${req.params.postsId} not found!`)
+    const blog = await BlogpostModel.findById(req.params.postsId);
+    if (blog.authors.includes(req.author._id) || req.author.role === "Admin") {
+      const deletedBlog = await BlogpostModel.findByIdAndDelete(
+        req.params.postsId
       );
+      if (deletedBlog) {
+        response.status(204).send();
+      } else {
+        next(
+          createHttpError(404, {
+            message: `Blog with _id ${req.params.postsId} was not found!`,
+          })
+        );
+      }
+    } else {
+      next(createHttpError(403, "You are not authorized to delete this blog!"));
     }
   } catch (error) {
     next(error);

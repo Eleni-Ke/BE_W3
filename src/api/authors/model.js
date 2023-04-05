@@ -11,7 +11,7 @@ const authorsSchema = new Schema(
     email: { type: String, required: true },
     password: { type: String, required: true },
     role: {
-      tyoe: String,
+      type: String,
       required: true,
       enum: ["Admin", "Author"],
       default: "Author",
@@ -22,10 +22,10 @@ const authorsSchema = new Schema(
 
 authorsSchema.pre("save", async function () {
   const newAuthorData = this;
-  if (newAuthorData.isDirectModified("password")) {
+  if (newAuthorData.isModified("password")) {
     const plainPW = newAuthorData.password;
 
-    const hash = await bcrypt.hash(plainPW, 10);
+    const hash = await bcrypt.hash(plainPW, 11);
     newAuthorData.password = hash;
   }
 });

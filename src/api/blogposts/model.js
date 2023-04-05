@@ -20,7 +20,7 @@ const blogpostsSchema = new Schema(
         },
       },
     },
-    author: { type: Schema.Types.ObjectId, ref: "Author" },
+    authors: [{ type: Schema.Types.ObjectId, ref: "Author" }],
     content: { type: String, required: true },
     likes: [{ type: String }],
     comments: [
@@ -34,5 +34,15 @@ const blogpostsSchema = new Schema(
   },
   { timestamps: true }
 );
+
+blogpostsSchema.static("findBlogs", async function (query) {
+  const blogs = await this.find(query.criteria, query.options.fields)
+    .populate("authors")
+    .skip(query.options.skip)
+    .limit(query.options.limit)
+    .sort(query.options.sort);
+  const totalDocuments = await this.countDocuments(query.criteria);
+  return { blogs, totalDocuments };
+});
 
 export default model("Blogpost", blogpostsSchema);

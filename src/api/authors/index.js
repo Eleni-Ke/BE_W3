@@ -1,5 +1,6 @@
 import Express from "express";
 import createHttpError from "http-errors";
+import { basicAuthMiddleware } from "../../lib/auth/basic.js";
 import AuthorsModel from "./model.js";
 // import uniqid from "uniqid";
 // import { getAuthors, writeAuthors } from "../../lib/fs-tools.js";
@@ -44,35 +45,60 @@ authorsRouter.get("/:authorsId", async (req, res, next) => {
   }
 });
 
-authorsRouter.put("/:authorsId", async (req, res, next) => {
-  try {
-    const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
-      req.params.authorsId,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (updatedAuthor) {
-      res.send(updatedAuthor);
-    } else {
-      next(
-        createError(404, `Author with id ${req.params.authorsId} not found!`)
-      );
+authorsRouter.put(
+  "/:authorsId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      if (
+        request.author._id.toString() === request.params.authorId ||
+        request.author.role === "Admin"
+      ) {
+        const updatedAuthor = await AuthorsModel.findByIdAndUpdate(
+          req.params.authorsId,
+          req.body,
+          { new: true, runValidators: true }
+        );
+        if (updatedAuthor) {
+          res.send(updatedAuthor);
+        } else {
+          next(
+            createError(
+              404,
+              `Author with id ${req.params.authorsId} not found!`
+            )
+          );
+        }
+      } else {
+        next(
+          createHttpError(403, "You are not authorized to update this author")
+        );
+      }
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 authorsRouter.delete("/:authorsId", async (req, res, next) => {
   try {
-    const deletedAuthor = await AuthorsModel.findByIdAndDelete(
-      req.params.authorsId
-    );
-    if (deletedAuthor) {
-      res.status(204).send();
+    if (
+      request.author._id.toString() === request.params.authorId ||
+      request.author.role === "Admin"
+    ) {
+      const deletedAuthor = await AuthorsModel.findByIdAndDelete(
+        req.params.authorsId
+      );
+      if (deletedAuthor) {
+        res.status(204).send();
+      } else {
+        next(
+          createError(404, `Author with id ${req.params.authorsId} not found!`)
+        );
+      }
     } else {
       next(
-        createError(404, `Author with id ${req.params.authorsId} not found!`)
+        createHttpError(403, "You are not authorized to update this author")
       );
     }
   } catch (error) {
