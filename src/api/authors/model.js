@@ -40,7 +40,7 @@ authorsSchema.methods.toJSON = function () {
   return currentAuthor;
 };
 
-authorsSchema.static("chechCredentials", async function (email, plainPW) {
+authorsSchema.static("checkCredentials", async function (email, plainPW) {
   const author = await this.findOne({ email });
   if (author) {
     const passwordMatch = await bcrypt.compare(plainPW, author.password);

@@ -1,6 +1,7 @@
 import Express from "express";
 import createHttpError from "http-errors";
 import { basicAuthMiddleware } from "../../lib/auth/basic.js";
+import { createAccessToken } from "../../lib/auth/tools.js";
 import AuthorsModel from "./model.js";
 // import uniqid from "uniqid";
 // import { getAuthors, writeAuthors } from "../../lib/fs-tools.js";
@@ -18,7 +19,7 @@ authorsRouter.post("/", async (req, res, next) => {
   }
 });
 
-authorsRouter.get("/", async (req, res, next) => {
+authorsRouter.get("/", basicAuthMiddleware, async (req, res, next) => {
   try {
     const authors = await AuthorsModel.find();
     res.send(authors);
@@ -27,23 +28,27 @@ authorsRouter.get("/", async (req, res, next) => {
   }
 });
 
-authorsRouter.get("/:authorsId", async (req, res, next) => {
-  try {
-    const author = await AuthorsModel.findById(req.params.authorsId);
-    if (author) {
-      res.send(author);
-    } else {
-      next(
-        createHttpError(
-          404,
-          `Author with the id: ${req.params.authorsId} not found!`
-        )
-      );
+authorsRouter.get(
+  "/:authorsId",
+  basicAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const author = await AuthorsModel.findById(req.params.authorsId);
+      if (author) {
+        res.send(author);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `Author with the id: ${req.params.authorsId} not found!`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 authorsRouter.put(
   "/:authorsId",
@@ -100,6 +105,22 @@ authorsRouter.delete("/:authorsId", async (req, res, next) => {
       next(
         createHttpError(403, "You are not authorized to update this author")
       );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+authorsRouter.post("/login", async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const author = await AuthorsModel.checkCredentials(email.password);
+    if (author) {
+      const payload = { _id: author._id, role: author.role };
+      const accessToken = await createAccessToken(payload);
+      res.send(accessToken);
+    } else {
+      next(createHttpError(401, "Credentials are not ok!"));
     }
   } catch (error) {
     next(error);

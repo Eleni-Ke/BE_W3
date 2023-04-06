@@ -4,6 +4,7 @@ import { sendsPostEmail } from "../../lib/email-tools.js";
 import createHttpError from "http-errors";
 import q2m from "query-to-mongo";
 import { basicAuthMiddleware } from "../../lib/auth/basic.js";
+import { adminOnlyMiddleware } from "../../lib/auth/admin.js";
 
 const blogpostsRouter = Express.Router();
 
@@ -25,7 +26,7 @@ blogpostsRouter.get(
 blogpostsRouter.post("/", basicAuthMiddleware, async (req, res, next) => {
   try {
     const newBlogpost = new BlogpostModel(req.body);
-    newBlog.authors = [...newBlog.authors, request.author._id];
+    newBlogpost.authors = [...newBlogpost.authors, req.author._id];
 
     const { _id } = await newBlogpost.save();
 
@@ -82,6 +83,7 @@ blogpostsRouter.get("/:postsId", async (req, res, next) => {
 blogpostsRouter.put(
   "/:postsId",
   basicAuthMiddleware,
+  adminOnlyMiddleware,
   async (req, res, next) => {
     try {
       const blog = await BlogpostModel.findById(req.params.postsId);
